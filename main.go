@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/gofiber/fiber/v2"
+	"log"
 	"os"
 )
 
@@ -24,6 +25,8 @@ func main() {
 			Key   string `json:"key"`
 			Value string `json:"value"`
 		}{}
+
+		log.Println(c.Request().Header.String())
 
 		if err := c.BodyParser(&payload); err != nil {
 			return c.Status(400).JSON("Error when trying to decode the payload")
