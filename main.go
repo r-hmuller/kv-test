@@ -1,6 +1,9 @@
 package main
 
-import "github.com/gofiber/fiber/v2"
+import (
+	"github.com/gofiber/fiber/v2"
+	"os"
+)
 
 func main() {
 	app := fiber.New()
@@ -36,7 +39,11 @@ func main() {
 		return c.Status(204).JSON("")
 	})
 
-	err := app.Listen(":3000")
+	var portEnv = os.Getenv("HOST")
+	if portEnv == "" {
+		panic("Couldn't find PORT env")
+	}
+	err := app.Listen(":" + portEnv)
 	if err != nil {
 		panic(err)
 	}
