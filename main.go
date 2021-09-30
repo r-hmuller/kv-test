@@ -39,11 +39,11 @@ func main() {
 		return c.Status(204).JSON("")
 	})
 
-	var portEnv = os.Getenv("HOST")
+	var portEnv = os.Getenv("PORT")
 	if portEnv == "" {
 		panic("Couldn't find PORT env")
 	}
-	err := app.Listen(":" + portEnv)
+	err := app.Listen(portEnv)
 	if err != nil {
 		panic(err)
 	}
