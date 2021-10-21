@@ -25,7 +25,7 @@ func NewExecutor() (*Executor, error) {
 		t:      time.NewTicker(time.Second),
 	}
 
-	fn := "logs/logfile.log"
+	fn := "logfile.log"
 	flags := os.O_CREATE | os.O_TRUNC | os.O_WRONLY | os.O_APPEND
 	//if syncIO {
 	//	flags = flags | os.O_SYNC
