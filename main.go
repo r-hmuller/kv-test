@@ -25,13 +25,13 @@ func NewExecutor() (*Executor, error) {
 		t:      time.NewTicker(time.Second),
 	}
 
-	fn := "logfile.log"
+	fn := "/app/logfile.log"
 	flags := os.O_CREATE | os.O_TRUNC | os.O_WRONLY | os.O_APPEND
 	//if syncIO {
 	//	flags = flags | os.O_SYNC
 	//}
 	var err error
-	ex.logFile, err = os.OpenFile(fn, flags, 0666)
+	ex.logFile, err = os.OpenFile(fn, flags, 0755)
 	if err != nil {
 		return nil, err
 	}

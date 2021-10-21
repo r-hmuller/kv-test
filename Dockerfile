@@ -2,7 +2,6 @@ FROM golang:alpine
 RUN mkdir /app
 ADD . /app/
 WORKDIR /app
-RUN mkdir /app/logs
 COPY go.mod .
 COPY go.sum .
 RUN go mod download
