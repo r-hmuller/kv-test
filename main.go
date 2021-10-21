@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/gofiber/fiber/v2"
+	"log"
 	"os"
 	"sync/atomic"
 	"time"
@@ -70,11 +71,11 @@ func main() {
 		key := c.Query("key")
 		result, ok := keyValueDB[key]
 		if ok {
-			atomic.SwapUint32(&ex.thrCount, 1)
+			atomic.AddUint32(&ex.thrCount, 1)
 			return c.JSON(result)
 		}
-		atomic.SwapUint32(&ex.thrCount, 1)
-		print(&ex.thrCount)
+		atomic.AddUint32(&ex.thrCount, 1)
+		log.Print(&ex.thrCount)
 		return c.Status(404).JSON("Key not found")
 	})
 
@@ -85,18 +86,18 @@ func main() {
 		}{}
 
 		if err := c.BodyParser(&payload); err != nil {
-			atomic.SwapUint32(&ex.thrCount, 1)
+			atomic.AddUint32(&ex.thrCount, 1)
 			return c.Status(400).JSON("Error when trying to decode the payload")
 		}
 		keyValueDB[payload.Key] = payload.Value
-		atomic.SwapUint32(&ex.thrCount, 1)
+		atomic.AddUint32(&ex.thrCount, 1)
 		return c.Status(204).JSON("")
 	})
 
 	app.Delete("/", func(c *fiber.Ctx) error {
 		key := c.Query("key")
 		delete(keyValueDB, key)
-		atomic.SwapUint32(&ex.thrCount, 1)
+		atomic.AddUint32(&ex.thrCount, 1)
 		return c.Status(204).JSON("")
 	})
 
