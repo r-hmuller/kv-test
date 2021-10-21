@@ -74,6 +74,7 @@ func main() {
 			return c.JSON(result)
 		}
 		atomic.SwapUint32(&ex.thrCount, 1)
+		print(&ex.thrCount)
 		return c.Status(404).JSON("Key not found")
 	})
 
