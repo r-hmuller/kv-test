@@ -31,7 +31,7 @@ func NewExecutor() (*Executor, error) {
 	//	flags = flags | os.O_SYNC
 	//}
 	var err error
-	ex.logFile, err = os.OpenFile(fn, flags, 0600)
+	ex.logFile, err = os.OpenFile(fn, flags, 0666)
 	if err != nil {
 		return nil, err
 	}
