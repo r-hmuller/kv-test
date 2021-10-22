@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"github.com/gofiber/fiber/v2"
 	"log"
 	"os"
@@ -10,9 +11,11 @@ import (
 	"time"
 )
 
+var isBeingTested bool = false
+
 type Executor struct {
-	cancel context.CancelFunc
-	//logFile   *os.File
+	cancel    context.CancelFunc
+	logFile   *os.File
 	batchLat  time.Time
 	measuring bool
 	thrCount  uint32 // atomic
@@ -21,9 +24,16 @@ type Executor struct {
 
 func NewExecutor() (*Executor, error) {
 	ctx, cn := context.WithCancel(context.Background())
+	fn := "/data/logfile.log"
+	flags := os.O_CREATE | os.O_TRUNC | os.O_WRONLY | os.O_APPEND
 	ex := &Executor{
 		cancel: cn,
 		t:      time.NewTicker(time.Second),
+	}
+	var err error
+	ex.logFile, err = os.OpenFile(fn, flags, 0600)
+	if err != nil {
+		panic(err)
 	}
 
 	go ex.monitorThroughput(ctx)
@@ -37,8 +47,13 @@ func (ex *Executor) monitorThroughput(ctx context.Context) error {
 			return nil
 
 		case <-ex.t.C:
-			t := atomic.SwapUint32(&ex.thrCount, 0)
-			println(t)
+			if isBeingTested {
+				t := atomic.SwapUint32(&ex.thrCount, 0)
+				_, err := fmt.Fprintf(ex.logFile, "%d\n", t)
+				if err != nil {
+					return err
+				}
+			}
 		}
 	}
 }
@@ -77,6 +92,23 @@ func main() {
 		}
 		keyValueDB[payload.Key] = payload.Value
 		atomic.AddUint32(&ex.thrCount, 1)
+		return c.Status(204).JSON("")
+	})
+
+	app.Post("testing", func(c *fiber.Ctx) error {
+		payload := struct {
+			Action string `json:"action"`
+		}{}
+		if err := c.BodyParser(&payload); err != nil {
+			return c.Status(400).JSON("Error when trying to decode the payload")
+		}
+		if payload.Action == "start" && !isBeingTested {
+			isBeingTested = true
+		}
+		if payload.Action == "stop" && isBeingTested {
+			isBeingTested = false
+		}
+
 		return c.Status(204).JSON("")
 	})
 
