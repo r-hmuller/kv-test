@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"github.com/gofiber/fiber/v2"
 	"log"
 	"os"
@@ -12,8 +11,8 @@ import (
 )
 
 type Executor struct {
-	cancel    context.CancelFunc
-	logFile   *os.File
+	cancel context.CancelFunc
+	//logFile   *os.File
 	batchLat  time.Time
 	measuring bool
 	thrCount  uint32 // atomic
@@ -25,17 +24,6 @@ func NewExecutor() (*Executor, error) {
 	ex := &Executor{
 		cancel: cn,
 		t:      time.NewTicker(time.Second),
-	}
-
-	fn := "/data/logfile.log"
-	flags := os.O_CREATE | os.O_TRUNC | os.O_WRONLY | os.O_APPEND
-	//if syncIO {
-	//	flags = flags | os.O_SYNC
-	//}
-	var err error
-	ex.logFile, err = os.OpenFile(fn, flags, 0755)
-	if err != nil {
-		return nil, err
 	}
 
 	go ex.monitorThroughput(ctx)
@@ -50,10 +38,7 @@ func (ex *Executor) monitorThroughput(ctx context.Context) error {
 
 		case <-ex.t.C:
 			t := atomic.SwapUint32(&ex.thrCount, 0)
-			_, err := fmt.Fprintf(ex.logFile, "%d\n", t)
-			if err != nil {
-				return err
-			}
+			println(t)
 		}
 	}
 }
