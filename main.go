@@ -4,9 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/gofiber/fiber/v2"
-	"log"
 	"os"
-	"strconv"
 	"sync/atomic"
 	"time"
 )
@@ -76,8 +74,7 @@ func main() {
 			return c.JSON(result)
 		}
 		atomic.AddUint32(&ex.thrCount, 1)
-		log.Print(&ex.thrCount)
-		return c.Status(404).JSON("Key not found, and counter is ->" + strconv.Itoa(int(ex.thrCount)))
+		return c.Status(404).JSON("Key not found")
 	})
 
 	app.Post("/", func(c *fiber.Ctx) error {
