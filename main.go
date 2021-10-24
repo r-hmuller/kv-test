@@ -45,12 +45,10 @@ func (ex *Executor) monitorThroughput(ctx context.Context) error {
 			return nil
 
 		case <-ex.t.C:
-			if isBeingTested {
-				t := atomic.SwapUint32(&ex.thrCount, 0)
-				_, err := fmt.Fprintf(ex.logFile, "%d\n", t)
-				if err != nil {
-					return err
-				}
+			t := atomic.SwapUint32(&ex.thrCount, 0)
+			_, err := fmt.Fprintf(ex.logFile, "%d\n", t)
+			if err != nil {
+				return err
 			}
 		}
 	}
