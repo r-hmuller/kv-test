@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/gofiber/fiber/v2"
+	"log"
 	"os"
 	"sync/atomic"
 	"time"
@@ -45,9 +46,11 @@ func (ex *Executor) monitorThroughput(ctx context.Context) error {
 			return nil
 
 		case <-ex.t.C:
+			log.Print(&ex.thrCount)
 			t := atomic.SwapUint32(&ex.thrCount, 0)
 			_, err := fmt.Fprintf(ex.logFile, "%d\n", t)
 			if err != nil {
+				log.Print(err)
 				return err
 			}
 		}
@@ -56,7 +59,10 @@ func (ex *Executor) monitorThroughput(ctx context.Context) error {
 
 func main() {
 	isBeingTested = false
-	app := fiber.New()
+	app := fiber.New(fiber.Config{
+		Concurrency: 1024 * 1024,
+		AppName:     "Test App v1.0.1",
+	})
 	var keyValueDB map[string]string
 	keyValueDB = make(map[string]string)
 
