@@ -4,9 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/gofiber/fiber/v2"
-	"log"
 	"os"
-	"strconv"
 	"sync/atomic"
 	"time"
 )
@@ -47,10 +45,8 @@ func (ex *Executor) monitorThroughput(ctx context.Context) error {
 			return nil
 
 		case <-ex.t.C:
-			log.Print("Is being tested?" + strconv.FormatBool(isBeingTested))
 			if isBeingTested {
 				t := atomic.SwapUint32(&ex.thrCount, 0)
-				log.Print(t)
 				_, err := fmt.Fprintf(ex.logFile, "%d\n", t)
 				if err != nil {
 					return err
