@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-var isBeingTested bool = false
+var isBeingTested bool
 
 type Executor struct {
 	cancel    context.CancelFunc
@@ -57,6 +57,7 @@ func (ex *Executor) monitorThroughput(ctx context.Context) error {
 }
 
 func main() {
+	isBeingTested = false
 	app := fiber.New()
 	var keyValueDB map[string]string
 	keyValueDB = make(map[string]string)
@@ -99,10 +100,10 @@ func main() {
 		if err := c.BodyParser(&payload); err != nil {
 			return c.Status(400).JSON("Error when trying to decode the payload")
 		}
-		if payload.Action == "start" && !isBeingTested {
+		if payload.Action == "start" {
 			isBeingTested = true
 		}
-		if payload.Action == "stop" && isBeingTested {
+		if payload.Action == "stop" {
 			isBeingTested = false
 		}
 
