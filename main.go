@@ -11,6 +11,7 @@ import (
 )
 
 var isBeingTested bool
+var vazao = make([]uint32, 20)
 
 type Executor struct {
 	cancel    context.CancelFunc
@@ -24,7 +25,7 @@ type Executor struct {
 func NewExecutor() (*Executor, error) {
 	ctx, cn := context.WithCancel(context.Background())
 	fn := "/data/logfile.log"
-	flags := os.O_CREATE | os.O_TRUNC | os.O_WRONLY | os.O_APPEND
+	flags := os.O_CREATE | os.O_TRUNC | os.O_WRONLY | os.O_APPEND | os.O_SYNC
 	ex := &Executor{
 		cancel: cn,
 		t:      time.NewTicker(time.Second),
@@ -46,13 +47,8 @@ func (ex *Executor) monitorThroughput(ctx context.Context) error {
 			return nil
 
 		case <-ex.t.C:
-			log.Print(ex.thrCount)
 			t := atomic.SwapUint32(&ex.thrCount, 0)
-			_, err := fmt.Fprintf(ex.logFile, "%d\n", t)
-			if err != nil {
-				log.Print(err)
-				return err
-			}
+			vazao = append(vazao, t)
 		}
 	}
 }
@@ -109,6 +105,14 @@ func main() {
 		}
 		if payload.Action == "stop" {
 			isBeingTested = false
+
+			for _, v := range vazao {
+				_, err := fmt.Fprintf(ex.logFile, "%d\n", v)
+				if err != nil {
+					log.Print(err)
+					return err
+				}
+			}
 		}
 
 		return c.Status(204).JSON("")
