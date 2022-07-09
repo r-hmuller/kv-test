@@ -6,6 +6,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"log"
 	"os"
+	"strconv"
 	"sync/atomic"
 	"time"
 )
@@ -59,8 +60,8 @@ func main() {
 		Concurrency: 1024 * 1024 * 1024,
 		AppName:     "Test App v1.0.1",
 	})
-	var keyValueDB map[string]string
-	keyValueDB = make(map[string]string)
+	var keyValueDB map[int]string
+	keyValueDB = make(map[int]string)
 
 	ex, err := NewExecutor()
 	if err != nil {
@@ -68,7 +69,10 @@ func main() {
 	}
 
 	app.Get("/", func(c *fiber.Ctx) error {
-		key := c.Query("key")
+		key, err := strconv.Atoi(c.Query("key"))
+		if err != nil {
+			return c.Status(500).JSON("Não foi possível converter a entrada para numérico")
+		}
 		result, ok := keyValueDB[key]
 		if ok {
 			atomic.AddUint32(&ex.thrCount, 1)
@@ -80,7 +84,7 @@ func main() {
 
 	app.Post("/", func(c *fiber.Ctx) error {
 		payload := struct {
-			Key   string `json:"key"`
+			Key   int    `json:"key"`
 			Value string `json:"value"`
 		}{}
 
@@ -119,7 +123,10 @@ func main() {
 	})
 
 	app.Delete("/", func(c *fiber.Ctx) error {
-		key := c.Query("key")
+		key, err := strconv.Atoi(c.Query("key"))
+		if err != nil {
+			return c.Status(500).JSON("Não foi possível converter a entrada para numérico")
+		}
 		delete(keyValueDB, key)
 		atomic.AddUint32(&ex.thrCount, 1)
 		return c.Status(204).JSON("")
