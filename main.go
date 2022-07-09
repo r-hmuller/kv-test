@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/gofiber/fiber/v2"
 	"log"
+	"math/rand"
 	"os"
 	"strconv"
 	"sync/atomic"
@@ -52,6 +53,16 @@ func (ex *Executor) monitorThroughput(ctx context.Context) error {
 			vazao = append(vazao, t)
 		}
 	}
+}
+
+var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+func randSeq(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(b)
 }
 
 func main() {
@@ -119,6 +130,22 @@ func main() {
 			}
 		}
 
+		return c.Status(204).JSON("")
+	})
+
+	app.Post("/seed", func(c *fiber.Ctx) error {
+		payload := struct {
+			Quantity int `json:"quantity"`
+			Size     int `json:"size"`
+		}{}
+		if err := c.BodyParser(&payload); err != nil {
+			return c.Status(400).JSON("Error when trying to decode the payload")
+		}
+
+		for i := 1; i < payload.Quantity; i++ {
+			rand.Seed(time.Now().UnixNano())
+			keyValueDB[i] = randSeq(payload.Size)
+		}
 		return c.Status(204).JSON("")
 	})
 
