@@ -111,7 +111,7 @@ func main() {
 	app.Post("/testing", func(c *fiber.Ctx) error {
 		payload := struct {
 			Action string `json:"action"`
-			Path string `json:"path"`
+			Path   string `json:"path"`
 		}{}
 		if err := c.BodyParser(&payload); err != nil {
 			return c.Status(400).JSON("Error when trying to decode the payload")
@@ -124,14 +124,15 @@ func main() {
 			flags := os.O_CREATE | os.O_TRUNC | os.O_WRONLY | os.O_APPEND | os.O_SYNC
 			customLog, err := os.OpenFile(payload.Path, flags, 0600)
 			if err != nil {
-				panic(err)
+				log.Print(err)
+				return c.Status(500).JSON(err.Error())
 			}
 
 			for _, v := range vazao {
 				_, err := fmt.Fprintf(customLog, "%d\n", v)
 				if err != nil {
 					log.Print(err)
-					return err
+					return c.Status(500).JSON(err.Error())
 				}
 			}
 		}
