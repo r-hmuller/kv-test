@@ -8,6 +8,7 @@ import (
 	"math/rand"
 	"os"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"time"
 )
@@ -73,7 +74,7 @@ func main() {
 	})
 	var keyValueDB map[int]string
 	keyValueDB = make(map[int]string)
-	someMapMutex = sync.RWMutex{}
+	someMapMutex := sync.RWMutex{}
 
 	ex, err := NewExecutor()
 	if err != nil {
@@ -85,9 +86,9 @@ func main() {
 		if err != nil {
 			return c.Status(500).JSON("Não foi possível converter a entrada para numérico")
 		}
-		someMapMutex.RLock()
+		someMapMutex.Lock()
 		result, ok := keyValueDB[key]
-		someMapMutex.RUnlock()
+		someMapMutex.Unlock()
 		if ok {
 			atomic.AddUint32(&ex.thrCount, 1)
 			return c.JSON(result)
