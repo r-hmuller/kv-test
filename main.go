@@ -68,7 +68,7 @@ func randSeq(n int) string {
 func main() {
 	isBeingTested = false
 	app := fiber.New(fiber.Config{
-		Concurrency: 1024 * 1024 * 1024,
+		Concurrency: 1024 * 1024,
 		AppName:     "Test App v1.0.1",
 	})
 	var keyValueDB map[int]string
