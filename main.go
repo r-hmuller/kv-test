@@ -73,6 +73,7 @@ func main() {
 	})
 	var keyValueDB map[int]string
 	keyValueDB = make(map[int]string)
+	someMapMutex = sync.RWMutex{}
 
 	ex, err := NewExecutor()
 	if err != nil {
@@ -84,7 +85,9 @@ func main() {
 		if err != nil {
 			return c.Status(500).JSON("Não foi possível converter a entrada para numérico")
 		}
+		someMapMutex.RLock()
 		result, ok := keyValueDB[key]
+		someMapMutex.RUnlock()
 		if ok {
 			atomic.AddUint32(&ex.thrCount, 1)
 			return c.JSON(result)
@@ -103,7 +106,9 @@ func main() {
 			atomic.AddUint32(&ex.thrCount, 1)
 			return c.Status(400).JSON("Error when trying to decode the payload")
 		}
+		someMapMutex.Lock()
 		keyValueDB[payload.Key] = payload.Value
+		someMapMutex.Unlock()
 		atomic.AddUint32(&ex.thrCount, 1)
 		return c.Status(204).JSON("")
 	})
@@ -161,7 +166,9 @@ func main() {
 		if err != nil {
 			return c.Status(500).JSON("Não foi possível converter a entrada para numérico")
 		}
+		someMapMutex.Lock()
 		delete(keyValueDB, key)
+		someMapMutex.Unlock()
 		atomic.AddUint32(&ex.thrCount, 1)
 		return c.Status(204).JSON("")
 	})
