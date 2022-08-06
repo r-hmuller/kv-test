@@ -14,7 +14,7 @@ import (
 )
 
 var isBeingTested bool
-var vazao = make([]uint32, 20)
+var vazao = make([]uint32, 300)
 
 type Executor struct {
 	cancel    context.CancelFunc
@@ -69,7 +69,7 @@ func randSeq(n int) string {
 func main() {
 	isBeingTested = false
 	app := fiber.New(fiber.Config{
-		Concurrency: 1024 * 1024,
+		Concurrency: 1024 * 1024 * 10,
 		AppName:     "Test App v1.0.1",
 	})
 	var keyValueDB map[int]string
@@ -124,6 +124,7 @@ func main() {
 		}
 		if payload.Action == "start" {
 			isBeingTested = true
+			vazao = make([]uint32, 300)
 		}
 		if payload.Action == "stop" {
 			isBeingTested = false
@@ -141,6 +142,8 @@ func main() {
 					return c.Status(500).JSON(err.Error())
 				}
 			}
+
+			vazao = make([]uint32, 300)
 		}
 
 		return c.Status(204).JSON("")
