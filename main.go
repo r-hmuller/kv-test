@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/gofiber/fiber/v2"
 	"log"
@@ -116,8 +117,9 @@ func main() {
 
 	app.Post("/testing", func(c *fiber.Ctx) error {
 		payload := struct {
-			Action string `json:"action"`
-			Path   string `json:"path"`
+			Action     string `json:"action"`
+			Path       string `json:"path"`
+			DumpMemory string `json:"dumpMemory"`
 		}{}
 		if err := c.BodyParser(&payload); err != nil {
 			return c.Status(400).JSON("Error when trying to decode the payload")
@@ -134,6 +136,22 @@ func main() {
 				log.Print(err)
 				return c.Status(500).JSON(err.Error())
 			}
+
+			dumpMemoryFile, err := os.OpenFile(payload.DumpMemory, flags, 0600)
+			if err != nil {
+				log.Print(err)
+				return c.Status(500).JSON(err.Error())
+			}
+
+			someMapMutex.Lock()
+			jsonKV, err := json.Marshal(keyValueDB)
+			_, err2 := fmt.Fprintf(dumpMemoryFile, "%s", jsonKV)
+			if err != nil || err2 != nil {
+				log.Print(err)
+				return c.Status(500).JSON(err.Error())
+				someMapMutex.Unlock()
+			}
+			someMapMutex.Unlock()
 
 			for _, v := range vazao {
 				_, err := fmt.Fprintf(customLog, "%d\n", v)
