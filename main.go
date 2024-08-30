@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/gofiber/fiber/v2"
 	"log"
@@ -132,20 +131,7 @@ func main() {
 				return c.Status(500).JSON(err.Error())
 			}
 
-			dumpMemoryFile, err := os.OpenFile(payload.DumpMemory, flags, 0600)
 			if err != nil {
-				log.Print(err)
-				return c.Status(500).JSON(err.Error())
-			}
-
-			tmpMap := make(map[int]string)
-			concurrentMap.Range(func(key, value interface{}) bool {
-				tmpMap[key.(int)] = value.(string)
-				return true
-			})
-			jsonKV, err := json.Marshal(tmpMap)
-			_, err2 := fmt.Fprintf(dumpMemoryFile, "%s", jsonKV)
-			if err != nil || err2 != nil {
 				log.Print(err)
 				return c.Status(500).JSON(err.Error())
 			}
