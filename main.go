@@ -75,7 +75,6 @@ type KeyValueStore struct {
 
 func (kv *KeyValueStore) getLock(key int) *sync.RWMutex {
 	kv.muControl.Lock()
-	defer kv.muControl.Unlock()
 
 	if kv.mu == nil {
 		kv.mu = make(map[int]*sync.RWMutex)
@@ -85,6 +84,7 @@ func (kv *KeyValueStore) getLock(key int) *sync.RWMutex {
 		kv.mu[key] = &sync.RWMutex{}
 	}
 
+	kv.muControl.Unlock()
 	return kv.mu[key]
 }
 
@@ -133,9 +133,8 @@ func main() {
 			return c.Status(400).JSON("Error when trying to decode the payload")
 		}
 		kv.getLock(payload.Key).Lock()
-		defer kv.getLock(payload.Key).Unlock()
-
 		kv.data[payload.Key] = payload.Value
+		kv.getLock(payload.Key).Unlock()
 		atomic.AddUint32(&ex.thrCount, 1)
 		return c.Status(204).JSON("")
 	})
