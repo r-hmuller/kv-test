@@ -67,15 +67,38 @@ func randSeq(n int) string {
 	return string(b)
 }
 
+type KeyValueStore struct {
+	data      map[int]string
+	mu        map[int]*sync.RWMutex
+	muControl sync.RWMutex
+}
+
+func (kv *KeyValueStore) getLock(key int) *sync.RWMutex {
+	kv.muControl.Lock()
+	defer kv.muControl.Unlock()
+
+	if kv.mu == nil {
+		kv.mu = make(map[int]*sync.RWMutex)
+	}
+
+	if _, ok := kv.mu[key]; !ok {
+		kv.mu[key] = &sync.RWMutex{}
+	}
+
+	return kv.mu[key]
+}
+
 func main() {
 	isBeingTested = false
 	app := fiber.New(fiber.Config{
 		Concurrency: 1024 * 1024 * 10,
 		AppName:     "Test App v1.0.1",
 	})
-	var keyValueDB map[int]string
-	keyValueDB = make(map[int]string)
-	someMapMutex := sync.RWMutex{}
+	kv := &KeyValueStore{
+		data:      make(map[int]string),
+		mu:        make(map[int]*sync.RWMutex),
+		muControl: sync.RWMutex{},
+	}
 
 	ex, err := NewExecutor()
 	if err != nil {
@@ -87,9 +110,10 @@ func main() {
 		if err != nil {
 			return c.Status(500).JSON("Não foi possível converter a entrada para numérico")
 		}
-		someMapMutex.Lock()
-		result, ok := keyValueDB[key]
-		someMapMutex.Unlock()
+		kv.getLock(key).RLock()
+		defer kv.getLock(key).RUnlock()
+
+		result, ok := kv.data[key]
 		if ok {
 			atomic.AddUint32(&ex.thrCount, 1)
 			return c.JSON(result)
@@ -108,9 +132,10 @@ func main() {
 			atomic.AddUint32(&ex.thrCount, 1)
 			return c.Status(400).JSON("Error when trying to decode the payload")
 		}
-		someMapMutex.Lock()
-		keyValueDB[payload.Key] = payload.Value
-		someMapMutex.Unlock()
+		kv.getLock(payload.Key).Lock()
+		defer kv.getLock(payload.Key).Unlock()
+
+		kv.data[payload.Key] = payload.Value
 		atomic.AddUint32(&ex.thrCount, 1)
 		return c.Status(204).JSON("")
 	})
@@ -143,15 +168,15 @@ func main() {
 				return c.Status(500).JSON(err.Error())
 			}
 
-			someMapMutex.Lock()
-			jsonKV, err := json.Marshal(keyValueDB)
+			kv.muControl.Lock()
+			jsonKV, err := json.Marshal(kv.data)
 			_, err2 := fmt.Fprintf(dumpMemoryFile, "%s", jsonKV)
 			if err != nil || err2 != nil {
 				log.Print(err)
+				kv.muControl.Unlock()
 				return c.Status(500).JSON(err.Error())
-				someMapMutex.Unlock()
 			}
-			someMapMutex.Unlock()
+			kv.muControl.Unlock()
 
 			for _, v := range vazao {
 				_, err := fmt.Fprintf(customLog, "%d\n", v)
@@ -177,8 +202,7 @@ func main() {
 		}
 
 		for i := 1; i < payload.Quantity; i++ {
-			rand.Seed(time.Now().UnixNano())
-			keyValueDB[i] = randSeq(payload.Size)
+			kv.data[i] = randSeq(payload.Size)
 		}
 		return c.Status(204).JSON("")
 	})
@@ -188,9 +212,10 @@ func main() {
 		if err != nil {
 			return c.Status(500).JSON("Não foi possível converter a entrada para numérico")
 		}
-		someMapMutex.Lock()
-		delete(keyValueDB, key)
-		someMapMutex.Unlock()
+		kv.getLock(key).Lock()
+		defer kv.getLock(key).Unlock()
+
+		delete(kv.data, key)
 		atomic.AddUint32(&ex.thrCount, 1)
 		return c.Status(204).JSON("")
 	})
