@@ -138,9 +138,9 @@ func main() {
 				return c.Status(500).JSON(err.Error())
 			}
 
-			tmpMap := make(map[interface{}]interface{})
-			concurrentMap.Range(func(k, v interface{}) bool {
-				tmpMap[k] = v
+			tmpMap := make(map[int]string)
+			concurrentMap.Range(func(key, value interface{}) bool {
+				tmpMap[key.(int)] = value.(string)
 				return true
 			})
 			jsonKV, err := json.Marshal(tmpMap)
