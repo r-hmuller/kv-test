@@ -13,8 +13,8 @@ import (
 	"time"
 )
 
-var isBeingTested bool
-var vazao = make([]uint32, 300)
+var isBeingTested atomic.Bool
+var vazao []uint32
 
 type Executor struct {
 	cancel    context.CancelFunc
@@ -27,7 +27,7 @@ type Executor struct {
 
 func NewExecutor() (*Executor, error) {
 	ctx, cn := context.WithCancel(context.Background())
-	fn := "/data/logfile.log"
+	fn := "/home/rodrigomuller/Mestrado/kv-test/logs/logfile.log"
 	flags := os.O_CREATE | os.O_TRUNC | os.O_WRONLY | os.O_APPEND | os.O_SYNC
 	ex := &Executor{
 		cancel: cn,
@@ -50,8 +50,10 @@ func (ex *Executor) monitorThroughput(ctx context.Context) error {
 			return nil
 
 		case <-ex.t.C:
-			t := atomic.SwapUint32(&ex.thrCount, 0)
-			vazao = append(vazao, t)
+			if isBeingTested.Load() {
+				t := atomic.SwapUint32(&ex.thrCount, 0)
+				vazao = append(vazao, t)
+			}
 		}
 	}
 }
@@ -69,7 +71,7 @@ func randSeq(n int) string {
 var concurrentMap sync.Map
 
 func main() {
-	isBeingTested = false
+	isBeingTested.Store(false)
 	app := fiber.New(fiber.Config{
 		Concurrency: 1024 * 1024 * 10,
 		AppName:     "Test App v1.0.1",
@@ -119,11 +121,10 @@ func main() {
 			return c.Status(400).JSON("Error when trying to decode the payload")
 		}
 		if payload.Action == "start" {
-			isBeingTested = true
-			vazao = make([]uint32, 300)
+			isBeingTested.Store(true)
 		}
 		if payload.Action == "stop" {
-			isBeingTested = false
+			isBeingTested.Store(false)
 			flags := os.O_CREATE | os.O_TRUNC | os.O_WRONLY | os.O_APPEND | os.O_SYNC
 			customLog, err := os.OpenFile(payload.Path, flags, 0600)
 			if err != nil {
@@ -144,7 +145,7 @@ func main() {
 				}
 			}
 
-			vazao = make([]uint32, 300)
+			vazao = make([]uint32, 0)
 		}
 
 		return c.Status(204).JSON("")
