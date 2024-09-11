@@ -27,7 +27,7 @@ type Executor struct {
 
 func NewExecutor() (*Executor, error) {
 	ctx, cn := context.WithCancel(context.Background())
-	fn := "/home/rodrigomuller/Mestrado/kv-test/logs/logfile.log"
+	fn := "/data/logfile.log"
 	flags := os.O_CREATE | os.O_TRUNC | os.O_WRONLY | os.O_APPEND | os.O_SYNC
 	ex := &Executor{
 		cancel: cn,
