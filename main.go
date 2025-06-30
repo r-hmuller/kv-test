@@ -6,10 +6,13 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"log"
 	"math/rand"
+	"net"
 	"os"
+	"os/signal"
 	"strconv"
 	"sync"
 	"sync/atomic"
+	"syscall"
 	"time"
 )
 
@@ -56,6 +59,45 @@ func (ex *Executor) monitorThroughput(ctx context.Context) error {
 			}
 		}
 	}
+}
+
+type serverController struct {
+	app      *fiber.App
+	listener net.Listener
+	port     string
+}
+
+// startListener inicia um novo listener de rede e o associa ao Fiber.
+// Roda em uma goroutine para não bloquear.
+func (sc *serverController) startListener() {
+	ln, err := net.Listen("tcp", sc.port)
+	if err != nil {
+		log.Printf("Erro ao iniciar o listener: %v", err)
+		return
+	}
+	sc.listener = ln
+	log.Printf("Servidor resumido. Escutando em %s", sc.port)
+
+	// Usa app.Listener() em vez de app.Listen() para usar nosso listener customizado.
+	go func() {
+		if err := sc.app.Listener(ln); err != nil {
+			// Este erro é esperado quando fechamos o listener com ln.Close().
+			log.Printf("app.Listener parou: %v", err)
+		}
+	}()
+}
+
+// stopListener fecha o listener atual para pausar o recebimento de novas conexões.
+func (sc *serverController) stopListener() {
+	if sc.listener == nil {
+		log.Println("O listener já está parado.")
+		return
+	}
+	log.Println("Pausando o servidor (fechando o listener)...")
+	if err := sc.listener.Close(); err != nil {
+		log.Printf("Erro ao fechar o listener: %v", err)
+	}
+	sc.listener = nil
 }
 
 var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
@@ -177,12 +219,56 @@ func main() {
 		return c.Status(204).JSON("")
 	})
 
-	var portEnv = os.Getenv("PORT")
-	if portEnv == "" {
+	port := os.Getenv("PORT")
+	if port == "" {
 		panic("Couldn't find PORT env")
 	}
-	err = app.Listen(portEnv)
-	if err != nil {
-		panic(err)
+	if port[0] != ':' {
+		port = ":" + port
+	}
+
+	// Cria nosso controlador de servidor.
+	sc := &serverController{
+		app:  app,
+		port: port,
+	}
+
+	// Inicia o servidor pela primeira vez.
+	sc.startListener()
+
+	// --- Gerenciamento de Sinais ---
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1, syscall.SIGUSR2)
+
+	log.Printf("PID do processo: %d", os.Getpid())
+	log.Println("Use 'kill -s USR1 <PID>' para PAUSAR.")
+	log.Println("Use 'kill -s USR2 <PID>' para RESUMIR.")
+	log.Println("Use 'Ctrl+C' ou 'kill <PID>' para DESLIGAR.")
+
+	// Loop infinito para processar os sinais recebidos.
+	for {
+		sig := <-sigChan
+		switch sig {
+		case syscall.SIGUSR1: // PAUSAR
+			sc.stopListener()
+			log.Println("Servidor pausado. Não está aceitando novas conexões.")
+
+		case syscall.SIGUSR2: // RESUMIR
+			if sc.listener != nil {
+				log.Println("O servidor já está em execução.")
+				continue
+			}
+			sc.startListener()
+
+		case syscall.SIGINT, syscall.SIGTERM: // DESLIGAR
+			log.Println("Sinal de desligamento recebido. Finalizando graciosamente...")
+			_, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			if err := app.Shutdown(); err != nil {
+				log.Printf("Erro durante o desligamento: %v", err)
+			}
+			log.Println("Servidor finalizado com sucesso.")
+			return // Sai do loop e encerra o programa.
+		}
 	}
 }
