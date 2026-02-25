@@ -17,7 +17,13 @@ import (
 )
 
 var isBeingTested atomic.Bool
-var vazao []uint32
+
+type sample struct {
+	timestamp  int64
+	throughput uint32
+}
+
+var vazao []sample
 
 type Executor struct {
 	cancel    context.CancelFunc
@@ -55,7 +61,7 @@ func (ex *Executor) monitorThroughput(ctx context.Context) error {
 		case <-ex.t.C:
 			if isBeingTested.Load() {
 				t := atomic.SwapUint32(&ex.thrCount, 0)
-				vazao = append(vazao, t)
+				vazao = append(vazao, sample{timestamp: time.Now().Unix(), throughput: t})
 			}
 		}
 	}
@@ -174,20 +180,15 @@ func main() {
 				return c.Status(500).JSON(err.Error())
 			}
 
-			if err != nil {
-				log.Print(err)
-				return c.Status(500).JSON(err.Error())
-			}
-
 			for _, v := range vazao {
-				_, err := fmt.Fprintf(customLog, "%d\n", v)
+				_, err := fmt.Fprintf(customLog, "%d,%d\n", v.timestamp, v.throughput)
 				if err != nil {
 					log.Print(err)
 					return c.Status(500).JSON(err.Error())
 				}
 			}
 
-			vazao = make([]uint32, 0)
+			vazao = make([]sample, 0)
 		}
 
 		return c.Status(204).JSON("")
