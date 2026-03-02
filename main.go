@@ -179,6 +179,7 @@ func main() {
 				log.Print(err)
 				return c.Status(500).JSON(err.Error())
 			}
+			defer customLog.Close()
 
 			for _, v := range vazao {
 				_, err := fmt.Fprintf(customLog, "%d,%d\n", v.timestamp, v.throughput)
@@ -268,6 +269,7 @@ func main() {
 			if err := app.Shutdown(); err != nil {
 				log.Printf("Erro durante o desligamento: %v", err)
 			}
+			ex.logFile.Close()
 			log.Println("Servidor finalizado com sucesso.")
 			return // Sai do loop e encerra o programa.
 		}
