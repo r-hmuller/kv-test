@@ -4,8 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/gofiber/fiber/v2"
-	"log"
-	"math/rand"
+"math/rand"
 	"net"
 	"os"
 	"os/signal"
@@ -78,31 +77,21 @@ type serverController struct {
 func (sc *serverController) startListener() {
 	ln, err := net.Listen("tcp", sc.port)
 	if err != nil {
-		log.Printf("Erro ao iniciar o listener: %v", err)
 		return
 	}
 	sc.listener = ln
-	log.Printf("Servidor resumido. Escutando em %s", sc.port)
 
-	// Usa app.Listener() em vez de app.Listen() para usar nosso listener customizado.
 	go func() {
-		if err := sc.app.Listener(ln); err != nil {
-			// Este erro é esperado quando fechamos o listener com ln.Close().
-			log.Printf("app.Listener parou: %v", err)
-		}
+		sc.app.Listener(ln)
 	}()
 }
 
 // stopListener fecha o listener atual para pausar o recebimento de novas conexões.
 func (sc *serverController) stopListener() {
 	if sc.listener == nil {
-		log.Println("O listener já está parado.")
 		return
 	}
-	log.Println("Pausando o servidor (fechando o listener)...")
-	if err := sc.listener.Close(); err != nil {
-		log.Printf("Erro ao fechar o listener: %v", err)
-	}
+	sc.listener.Close()
 	sc.listener = nil
 }
 
@@ -176,7 +165,6 @@ func main() {
 			flags := os.O_CREATE | os.O_TRUNC | os.O_WRONLY | os.O_APPEND | os.O_SYNC
 			customLog, err := os.OpenFile(payload.Path, flags, 0600)
 			if err != nil {
-				log.Print(err)
 				return c.Status(500).JSON(err.Error())
 			}
 			defer customLog.Close()
@@ -184,7 +172,6 @@ func main() {
 			for _, v := range vazao {
 				_, err := fmt.Fprintf(customLog, "%d,%d\n", v.timestamp, v.throughput)
 				if err != nil {
-					log.Print(err)
 					return c.Status(500).JSON(err.Error())
 				}
 			}
@@ -242,36 +229,24 @@ func main() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGUSR1, syscall.SIGUSR2)
 
-	log.Printf("PID do processo: %d", os.Getpid())
-	log.Println("Use 'kill -s USR1 <PID>' para PAUSAR.")
-	log.Println("Use 'kill -s USR2 <PID>' para RESUMIR.")
-	log.Println("Use 'Ctrl+C' ou 'kill <PID>' para DESLIGAR.")
-
-	// Loop infinito para processar os sinais recebidos.
 	for {
 		sig := <-sigChan
 		switch sig {
-		case syscall.SIGUSR1: // PAUSAR
+		case syscall.SIGUSR1:
 			sc.stopListener()
-			log.Println("Servidor pausado. Não está aceitando novas conexões.")
 
-		case syscall.SIGUSR2: // RESUMIR
+		case syscall.SIGUSR2:
 			if sc.listener != nil {
-				log.Println("O servidor já está em execução.")
 				continue
 			}
 			sc.startListener()
 
-		case syscall.SIGINT, syscall.SIGTERM: // DESLIGAR
-			log.Println("Sinal de desligamento recebido. Finalizando graciosamente...")
+		case syscall.SIGINT, syscall.SIGTERM:
 			_, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
-			if err := app.Shutdown(); err != nil {
-				log.Printf("Erro durante o desligamento: %v", err)
-			}
+			app.Shutdown()
 			ex.logFile.Close()
-			log.Println("Servidor finalizado com sucesso.")
-			return // Sai do loop e encerra o programa.
+			return
 		}
 	}
 }
