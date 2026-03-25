@@ -23,6 +23,7 @@ type sample struct {
 }
 
 var vazao []sample
+var vazaoMu sync.Mutex
 
 type Executor struct {
 	cancel    context.CancelFunc
@@ -60,7 +61,9 @@ func (ex *Executor) monitorThroughput(ctx context.Context) error {
 		case <-ex.t.C:
 			if isBeingTested.Load() {
 				t := atomic.SwapUint32(&ex.thrCount, 0)
+				vazaoMu.Lock()
 				vazao = append(vazao, sample{timestamp: time.Now().Unix(), throughput: t})
+				vazaoMu.Unlock()
 			}
 		}
 	}
@@ -169,14 +172,17 @@ func main() {
 			}
 			defer customLog.Close()
 
-			for _, v := range vazao {
+			vazaoMu.Lock()
+			snapshot := vazao
+			vazao = make([]sample, 0)
+			vazaoMu.Unlock()
+
+			for _, v := range snapshot {
 				_, err := fmt.Fprintf(customLog, "%d,%d\n", v.timestamp, v.throughput)
 				if err != nil {
 					return c.Status(500).JSON(err.Error())
 				}
 			}
-
-			vazao = make([]sample, 0)
 		}
 
 		return c.Status(204).JSON("")
