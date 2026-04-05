@@ -4,7 +4,8 @@ import (
 	"context"
 	"fmt"
 	"github.com/gofiber/fiber/v2"
-"math/rand"
+	"log"
+	"math/rand"
 	"net"
 	"os"
 	"os/signal"
@@ -108,6 +109,16 @@ func randSeq(n int) string {
 	return string(b)
 }
 
+func logErrors(route string, h fiber.Handler) fiber.Handler {
+	return func(c *fiber.Ctx) error {
+		err := h(c)
+		if status := c.Response().StatusCode(); status >= 400 {
+			log.Printf("%s [%d]: %v", route, status, err)
+		}
+		return err
+	}
+}
+
 var concurrentMap sync.Map
 
 func main() {
@@ -151,14 +162,16 @@ func main() {
 		return c.Status(204).JSON("")
 	})
 
-	app.Post("/testing", func(c *fiber.Ctx) error {
+	app.Post("/testing", logErrors("/testing", func(c *fiber.Ctx) error {
 		payload := struct {
-			Action     string `json:"action"`
-			Path       string `json:"path"`
-			DumpMemory string `json:"dumpMemory"`
+			Action string `json:"action"`
+			Path   string `json:"path"`
 		}{}
 		if err := c.BodyParser(&payload); err != nil {
 			return c.Status(400).JSON("Error when trying to decode the payload")
+		}
+		if payload.Action == "stop" && payload.Path == "" {
+			return c.Status(400).JSON("path is required when action is stop")
 		}
 		if payload.Action == "start" {
 			isBeingTested.Store(true)
@@ -186,7 +199,7 @@ func main() {
 		}
 
 		return c.Status(204).JSON("")
-	})
+	}))
 
 	app.Post("/seed", func(c *fiber.Ctx) error {
 		payload := struct {
