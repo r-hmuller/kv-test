@@ -133,6 +133,10 @@ func main() {
 		panic(err)
 	}
 
+	app.Get("/health", func(c *fiber.Ctx) error {
+		return c.SendStatus(200)
+	})
+
 	app.Get("/", func(c *fiber.Ctx) error {
 		key, err := strconv.Atoi(c.Query("key"))
 		if err != nil {
