@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -161,7 +162,10 @@ func main() {
 			atomic.AddUint32(&ex.thrCount, 1)
 			return c.Status(400).JSON("Error when trying to decode the payload")
 		}
-		concurrentMap.Store(payload.Key, payload.Value)
+		// Cópia obrigatória: o Fiber/fasthttp é zero-copy e payload.Value aponta
+		// pro buffer reutilizável da conexão — sem o Clone, a próxima request
+		// sobrescreve os bytes do valor já armazenado.
+		concurrentMap.Store(payload.Key, strings.Clone(payload.Value))
 		atomic.AddUint32(&ex.thrCount, 1)
 		return c.Status(204).JSON("")
 	})
